@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { UserRole } from '@/contexts/AuthContext';
-import { User, Users, BookOpen, ParentIcon } from 'lucide-react';
+import { User, Users, BookOpen, Heart } from 'lucide-react';
 
 const RoleCard: React.FC<{
   title: string;
@@ -81,7 +81,7 @@ const Index = () => {
             title="Parent"
             description="View your child's progress, attendance, and assignments"
             role="parent"
-            icon={<ParentIcon size={32} className="text-edu-purple-600" />}
+            icon={<Heart size={32} className="text-edu-purple-600" />}
             onClick={() => handleRoleSelect('parent')}
           />
         </div>
