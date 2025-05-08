@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { mockStudent, mockAssignments, mockQuestions, mockQuizzes, mockAttendanceRecords } from "@/data/mockData";
 import { FileText, MessageSquare, CalendarCheck, BookOpen } from "lucide-react";
+import LearningMaterials from "../student/LearningMaterials";
 
 const StudentDashboard = () => {
   const { user } = useAuth();
@@ -174,6 +175,12 @@ const StudentDashboard = () => {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Learning Materials */}
+      <section>
+        <h2 className="text-xl font-bold mb-4">Learning Resources</h2>
+        <LearningMaterials />
+      </section>
       
       {/* Recent assignments */}
       <section>

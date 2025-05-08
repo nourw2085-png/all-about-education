@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/components/ui/use-toast';
 import { ArrowLeft } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [loading, setLoading] = useState(false);
   
   const { login, role } = useAuth();
@@ -24,6 +26,15 @@ const Login = () => {
       toast({
         title: "Error",
         description: "Please enter both email and password",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!gender) {
+      toast({
+        title: "Error",
+        description: "Please select your gender",
         variant: "destructive",
       });
       return;
@@ -42,7 +53,7 @@ const Login = () => {
         return;
       }
       
-      await login(email, password, role);
+      await login(email, password, role, gender);
       
       toast({
         title: "Success",
@@ -111,6 +122,19 @@ const Login = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Gender</Label>
+              <RadioGroup value={gender} onValueChange={(value) => setGender(value as 'male' | 'female')}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="male" id="male" />
+                  <Label htmlFor="male">Male</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="female" id="female" />
+                  <Label htmlFor="female">Female</Label>
+                </div>
+              </RadioGroup>
             </div>
           </CardContent>
           <CardFooter>
