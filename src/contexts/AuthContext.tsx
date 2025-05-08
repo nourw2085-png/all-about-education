@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 export type UserRole = 'student' | 'assistant' | 'teacher' | 'parent' | null;
 export type Gender = 'male' | 'female';
@@ -26,6 +26,9 @@ interface AuthContextType {
   logout: () => void;
   setRole: (role: UserRole) => void;
   updateUserBankNumber?: (bankNumber: string) => void;
+  updateUserAvatar: (avatar: string) => void;
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,8 +44,39 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<UserRole>(null);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
   const isAuthenticated = !!user;
+
+  // Initialize user from localStorage on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem('tutor-quest-user');
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      setRole(parsedUser.role);
+    }
+    
+    // Check for dark mode preference
+    const darkModePreference = localStorage.getItem('tutor-quest-dark-mode');
+    if (darkModePreference) {
+      setIsDarkMode(darkModePreference === 'true');
+    } else {
+      // Default to system preference if available
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setIsDarkMode(prefersDark);
+    }
+  }, []);
+
+  // Apply dark mode class to document when isDarkMode changes
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('tutor-quest-dark-mode', isDarkMode.toString());
+  }, [isDarkMode]);
 
   const login = async (email: string, password: string, role: UserRole, gender: Gender) => {
     // In a real app, this would be an API call to authenticate
@@ -171,6 +205,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updateUserAvatar = (avatar: string) => {
+    if (user) {
+      const updatedUser = {
+        ...user,
+        avatar
+      };
+      setUser(updatedUser);
+      localStorage.setItem('tutor-quest-user', JSON.stringify(updatedUser));
+      
+      // Also update in the users array
+      const storedUsers = JSON.parse(localStorage.getItem('tutor-quest-users') || '[]');
+      const updatedUsers = storedUsers.map((u: User) => {
+        if (u.id === user.id) {
+          return updatedUser;
+        }
+        return u;
+      });
+      localStorage.setItem('tutor-quest-users', JSON.stringify(updatedUsers));
+    }
+  };
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(prev => !prev);
+  };
+
   const logout = () => {
     setUser(null);
     setRole(null);
@@ -186,7 +245,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       register,
       logout,
       setRole,
-      updateUserBankNumber
+      updateUserBankNumber,
+      updateUserAvatar,
+      isDarkMode,
+      toggleDarkMode
     }}>
       {children}
     </AuthContext.Provider>

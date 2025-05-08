@@ -11,12 +11,31 @@ import {
   User,
   LogOut,
   Menu,
-  X
+  X,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import AvatarUpload from '@/components/profile/AvatarUpload';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface NavItemProps {
   icon: ReactNode;
@@ -30,8 +49,8 @@ const NavItem = ({ icon, label, active, onClick }: NavItemProps) => (
     onClick={onClick}
     className={`flex items-center w-full px-3 py-2 rounded-md transition-colors ${
       active 
-        ? 'bg-edu-purple-100 text-edu-purple-700' 
-        : 'hover:bg-edu-purple-50 text-gray-700 hover:text-edu-purple-700'
+        ? 'bg-edu-purple-100 text-edu-purple-700 dark:bg-edu-purple-900 dark:text-edu-purple-200' 
+        : 'hover:bg-edu-purple-50 text-gray-700 hover:text-edu-purple-700 dark:hover:bg-edu-purple-900/50 dark:text-gray-300 dark:hover:text-edu-purple-200'
     }`}
   >
     <span className="mr-3">{icon}</span>
@@ -49,6 +68,7 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
   const { user, logout, role } = useAuth();
   const navigate = useNavigate();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   
   const handleNavigation = (path: string) => {
     navigate(path);
@@ -125,9 +145,9 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
   );
   
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Top header */}
-      <header className="bg-white border-b border-gray-200 py-3 px-4 flex justify-between items-center">
+      <header className="bg-white border-b border-gray-200 py-3 px-4 flex justify-between items-center dark:bg-gray-900 dark:border-gray-800">
         <div className="flex items-center">
           <Sheet open={isMobileNavOpen} onOpenChange={setIsMobileNavOpen}>
             <SheetTrigger asChild className="lg:hidden">
@@ -137,15 +157,16 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
             </SheetTrigger>
             <SheetContent side="left" className="w-[240px] sm:w-[300px]">
               <div className="flex flex-col h-full">
-                <div className="px-2 py-4">
-                  <h2 className="text-lg font-bold text-edu-purple-700">Tutor Quest Connect</h2>
+                <div className="px-2 py-4 flex justify-between items-center">
+                  <h2 className="text-lg font-bold text-edu-purple-700 dark:text-edu-purple-300">Tutor Quest Connect</h2>
+                  <ThemeToggle />
                 </div>
                 <Separator />
                 {renderNav()}
                 <div className="mt-auto pt-4 px-2">
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
                     onClick={handleLogout}
                   >
                     <LogOut size={20} className="mr-3" /> Logout
@@ -156,19 +177,39 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
           </Sheet>
           <h1 className="text-xl font-semibold ml-2 lg:ml-0">{title}</h1>
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          
           {user && (
-            <div className="flex items-center">
-              <span className="text-sm font-medium text-gray-700 mr-2 hidden sm:inline-block">
-                {user.name}
-              </span>
-              <Avatar>
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="bg-edu-purple-200 text-edu-purple-700">
-                  {user.name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </div>
+            <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+              <DialogTrigger asChild>
+                <button className="flex items-center">
+                  <span className="text-sm font-medium text-gray-700 mr-2 hidden sm:inline-block dark:text-gray-300">
+                    {user.name}
+                  </span>
+                  <Avatar>
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarFallback className="bg-edu-purple-200 text-edu-purple-700 dark:bg-edu-purple-800 dark:text-edu-purple-200">
+                      {user.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Profile Settings</DialogTitle>
+                  <DialogDescription>
+                    Update your profile picture and preferences
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <AvatarUpload />
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <Button onClick={() => setIsProfileOpen(false)}>Done</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           )}
         </div>
       </header>
@@ -176,7 +217,7 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
       {/* Main content */}
       <div className="flex flex-1">
         {/* Sidebar - desktop only */}
-        <aside className="hidden lg:block w-56 bg-gray-50 border-r border-gray-200 p-4">
+        <aside className="hidden lg:block w-56 bg-gray-50 border-r border-gray-200 p-4 dark:bg-gray-900 dark:border-gray-800">
           <div className="flex flex-col h-full">
             <div className="space-y-1">
               {renderNav()}
@@ -184,7 +225,7 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
             <div className="mt-auto pt-4">
               <Button 
                 variant="outline" 
-                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
                 onClick={handleLogout}
               >
                 <LogOut size={20} className="mr-3" /> Logout
