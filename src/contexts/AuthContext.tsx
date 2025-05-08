@@ -13,6 +13,7 @@ interface User {
   points?: number;
   bankNumber?: string;
   avatar?: string;
+  studentCode?: string;
 }
 
 interface AuthContextType {
@@ -20,6 +21,7 @@ interface AuthContextType {
   role: UserRole;
   isAuthenticated: boolean;
   login: (email: string, password: string, role: UserRole, gender: Gender) => Promise<void>;
+  register: (name: string, email: string, password: string, role: UserRole, gender: Gender, bankNumber?: string, studentCode?: string) => Promise<void>;
   logout: () => void;
   setRole: (role: UserRole) => void;
   updateUserBankNumber?: (bankNumber: string) => void;
@@ -45,48 +47,81 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // In a real app, this would be an API call to authenticate
     // For now we'll simulate with mock data based on role
     
-    let mockUser: User;
+    // Check if user exists in localStorage
+    const storedUsers = JSON.parse(localStorage.getItem('tutor-quest-users') || '[]');
+    const foundUser = storedUsers.find((u: User) => u.email === email && role === u.role);
+    
+    if (!foundUser) {
+      throw new Error("User not found. Please register first.");
+    }
+    
+    // Wait for 1 second to simulate network request
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    setUser(foundUser);
+    setRole(role);
+    
+    // Store in localStorage for persistence
+    localStorage.setItem('tutor-quest-user', JSON.stringify(foundUser));
+  };
+
+  const register = async (name: string, email: string, password: string, role: UserRole, gender: Gender, bankNumber?: string, studentCode?: string) => {
+    // Get existing users or initialize empty array
+    const storedUsers = JSON.parse(localStorage.getItem('tutor-quest-users') || '[]');
+    
+    // Check if user already exists with this email and role
+    const userExists = storedUsers.some((user: User) => user.email === email && user.role === role);
+    if (userExists) {
+      throw new Error('User with this email and role already exists');
+    }
+    
+    // Generate a new ID (in a real app this would come from the backend)
+    const id = `${role}-${Date.now()}`;
+    
+    // Create new user based on role
+    let newUser: User;
     
     switch (role) {
       case 'student':
-        mockUser = {
-          id: '1',
-          name: 'Student User',
-          email: email,
+        newUser = {
+          id,
+          name,
+          email,
           role: 'student',
-          gender: gender,
+          gender,
+          studentCode: studentCode || `S-${Math.floor(Math.random() * 10000)}`,
           avatar: '/placeholder.svg'
         };
         break;
       case 'assistant':
-        mockUser = {
-          id: '2',
-          name: 'Assistant User',
-          email: email,
+        newUser = {
+          id,
+          name,
+          email,
           role: 'assistant',
-          gender: gender,
-          points: 150,
-          bankNumber: '',
+          gender,
+          points: 0,
+          bankNumber: bankNumber || '',
           avatar: '/placeholder.svg'
         };
         break;
       case 'teacher':
-        mockUser = {
-          id: '3',
-          name: 'Teacher User',
-          email: email,
+        newUser = {
+          id,
+          name,
+          email,
           role: 'teacher',
-          gender: gender,
+          gender,
           avatar: '/placeholder.svg'
         };
         break;
       case 'parent':
-        mockUser = {
-          id: '4',
-          name: 'Parent User',
-          email: email,
+        newUser = {
+          id,
+          name,
+          email,
           role: 'parent',
-          gender: gender,
+          gender,
           avatar: '/placeholder.svg'
         };
         break;
@@ -94,14 +129,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Invalid role');
     }
     
+    // Store the password in a separate object (in a real app this would be hashed and stored securely)
+    const passwordEntry = { email, role, password };
+    const passwords = JSON.parse(localStorage.getItem('tutor-quest-passwords') || '[]');
+    passwords.push(passwordEntry);
+    localStorage.setItem('tutor-quest-passwords', JSON.stringify(passwords));
+    
+    // Add to users array and save to localStorage
+    storedUsers.push(newUser);
+    localStorage.setItem('tutor-quest-users', JSON.stringify(storedUsers));
+    
     // Wait for 1 second to simulate network request
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    setUser(mockUser);
+    // Log in the user automatically
+    setUser(newUser);
     setRole(role);
-    
-    // Store in localStorage for persistence
-    localStorage.setItem('tutor-quest-user', JSON.stringify(mockUser));
+    localStorage.setItem('tutor-quest-user', JSON.stringify(newUser));
   };
 
   const updateUserBankNumber = (bankNumber: string) => {
@@ -112,6 +156,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
       setUser(updatedUser);
       localStorage.setItem('tutor-quest-user', JSON.stringify(updatedUser));
+      
+      // Also update in the users array
+      const storedUsers = JSON.parse(localStorage.getItem('tutor-quest-users') || '[]');
+      const updatedUsers = storedUsers.map((u: User) => {
+        if (u.id === user.id) {
+          return updatedUser;
+        }
+        return u;
+      });
+      localStorage.setItem('tutor-quest-users', JSON.stringify(updatedUsers));
     }
   };
 
@@ -127,6 +181,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       role, 
       isAuthenticated,
       login,
+      register,
       logout,
       setRole,
       updateUserBankNumber
