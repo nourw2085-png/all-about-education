@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/components/ui/use-toast';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus, X } from 'lucide-react';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -18,6 +18,8 @@ const Register = () => {
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [bankNumber, setBankNumber] = useState('');
   const [studentCode, setStudentCode] = useState('');
+  const [studentCodes, setStudentCodes] = useState<string[]>([]);
+  const [currentStudentCode, setCurrentStudentCode] = useState('');
   const [loading, setLoading] = useState(false);
   
   const { register, role } = useAuth();
@@ -28,6 +30,29 @@ const Register = () => {
       navigate('/');
     }
   }, [role, navigate]);
+
+  const addStudentCode = () => {
+    if (currentStudentCode && !studentCodes.includes(currentStudentCode)) {
+      setStudentCodes([...studentCodes, currentStudentCode]);
+      setCurrentStudentCode('');
+    } else if (currentStudentCode === '') {
+      toast({
+        title: "Error",
+        description: "Please enter a student code",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Student code already added",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeStudentCode = (codeToRemove: string) => {
+    setStudentCodes(studentCodes.filter(code => code !== codeToRemove));
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +93,15 @@ const Register = () => {
       return;
     }
     
+    if (role === 'parent' && studentCodes.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add at least one student code",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       setLoading(true);
       
@@ -81,7 +115,7 @@ const Register = () => {
         return;
       }
       
-      await register(name, email, password, role, gender, bankNumber, studentCode);
+      await register(name, email, password, role, gender, bankNumber, studentCode, studentCodes);
       
       toast({
         title: "Success",
@@ -213,6 +247,45 @@ const Register = () => {
                   onChange={(e) => setStudentCode(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">If left empty, a code will be generated for you</p>
+              </div>
+            )}
+            
+            {role === 'parent' && (
+              <div className="space-y-2">
+                <Label htmlFor="studentCodes">Student Codes</Label>
+                <div className="flex space-x-2">
+                  <Input 
+                    id="studentCodes" 
+                    placeholder="Enter your child's student code" 
+                    value={currentStudentCode}
+                    onChange={(e) => setCurrentStudentCode(e.target.value)}
+                  />
+                  <Button type="button" onClick={addStudentCode} size="icon">
+                    <Plus size={18} />
+                  </Button>
+                </div>
+                {studentCodes.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-sm font-medium">Added students:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {studentCodes.map((code, index) => (
+                        <div key={index} className="bg-slate-100 px-3 py-1 rounded-full flex items-center text-sm">
+                          {code}
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-5 w-5 ml-1"
+                            onClick={() => removeStudentCode(code)}
+                          >
+                            <X size={14} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">Add the student codes of your children</p>
               </div>
             )}
           </CardContent>

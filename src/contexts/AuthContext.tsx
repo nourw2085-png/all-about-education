@@ -14,6 +14,7 @@ interface User {
   bankNumber?: string;
   avatar?: string;
   studentCode?: string;
+  studentCodes?: string[]; // Added for parents
 }
 
 interface AuthContextType {
@@ -21,7 +22,7 @@ interface AuthContextType {
   role: UserRole;
   isAuthenticated: boolean;
   login: (email: string, password: string, role: UserRole, gender: Gender) => Promise<void>;
-  register: (name: string, email: string, password: string, role: UserRole, gender: Gender, bankNumber?: string, studentCode?: string) => Promise<void>;
+  register: (name: string, email: string, password: string, role: UserRole, gender: Gender, bankNumber?: string, studentCode?: string, studentCodes?: string[]) => Promise<void>;
   logout: () => void;
   setRole: (role: UserRole) => void;
   updateUserBankNumber?: (bankNumber: string) => void;
@@ -65,7 +66,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('tutor-quest-user', JSON.stringify(foundUser));
   };
 
-  const register = async (name: string, email: string, password: string, role: UserRole, gender: Gender, bankNumber?: string, studentCode?: string) => {
+  const register = async (name: string, email: string, password: string, role: UserRole, gender: Gender, bankNumber?: string, studentCode?: string, studentCodes?: string[]) => {
     // Get existing users or initialize empty array
     const storedUsers = JSON.parse(localStorage.getItem('tutor-quest-users') || '[]');
     
@@ -122,6 +123,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           email,
           role: 'parent',
           gender,
+          studentCodes: studentCodes || [], // Store the student codes for parents
           avatar: '/placeholder.svg'
         };
         break;
