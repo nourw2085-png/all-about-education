@@ -46,7 +46,7 @@ const Index = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-edu-purple-50 p-4">
       <div className="w-full max-w-6xl">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-edu-purple-800">Tutor Quest Connect</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-edu-purple-800">Welcome to Mathlets Team</h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             A platform connecting students, assistants, teachers, and parents for enhanced learning experiences
           </p>
