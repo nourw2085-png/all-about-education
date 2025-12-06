@@ -104,6 +104,7 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
         roleSpecificItems = [
           { icon: <MessageSquare size={20} />, label: 'Questions', path: '/questions' },
           { icon: <FileText size={20} />, label: 'Assignments', path: '/assignments' },
+          { icon: <BookOpen size={20} />, label: 'Materials', path: '/materials' },
           { icon: <CalendarCheck size={20} />, label: 'Attendance', path: '/attendance' },
         ];
         break;
@@ -118,8 +119,9 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
         break;
       case 'parent':
         roleSpecificItems = [
-          { icon: <User size={20} />, label: 'My Child', path: '/child' },
+          { icon: <User size={20} />, label: 'My Child', path: '/my-child' },
           { icon: <FileText size={20} />, label: 'Assignments', path: '/assignments' },
+          { icon: <BookOpen size={20} />, label: 'Materials', path: '/materials' },
           { icon: <CalendarCheck size={20} />, label: 'Attendance', path: '/attendance' },
         ];
         break;
