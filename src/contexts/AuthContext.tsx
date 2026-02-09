@@ -4,6 +4,20 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 export type UserRole = 'student' | 'assistant' | 'teacher' | 'parent' | null;
 export type Gender = 'male' | 'female';
 
+export const AVAILABLE_PAPERS = [
+  'O Level Edexcel',
+  'O Level CIS',
+  'Pure 1',
+  'Pure 2',
+  'Pure 3',
+  'Pure 4',
+  'M1',
+  'S1',
+  'M2',
+] as const;
+
+export type Paper = typeof AVAILABLE_PAPERS[number];
+
 interface User {
   id: string;
   name: string;
@@ -14,7 +28,8 @@ interface User {
   bankNumber?: string;
   avatar?: string;
   studentCode?: string;
-  studentCodes?: string[]; // Added for parents
+  studentCodes?: string[];
+  papers?: Paper[];
 }
 
 interface AuthContextType {
@@ -22,7 +37,7 @@ interface AuthContextType {
   role: UserRole;
   isAuthenticated: boolean;
   login: (email: string, password: string, role: UserRole, gender: Gender) => Promise<void>;
-  register: (name: string, email: string, password: string, role: UserRole, gender: Gender, bankNumber?: string, studentCode?: string, studentCodes?: string[]) => Promise<void>;
+  register: (name: string, email: string, password: string, role: UserRole, gender: Gender, bankNumber?: string, studentCode?: string, studentCodes?: string[], papers?: Paper[]) => Promise<void>;
   logout: () => void;
   setRole: (role: UserRole) => void;
   updateUserBankNumber?: (bankNumber: string) => void;
@@ -100,7 +115,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('tutor-quest-user', JSON.stringify(foundUser));
   };
 
-  const register = async (name: string, email: string, password: string, role: UserRole, gender: Gender, bankNumber?: string, studentCode?: string, studentCodes?: string[]) => {
+  const register = async (name: string, email: string, password: string, role: UserRole, gender: Gender, bankNumber?: string, studentCode?: string, studentCodes?: string[], papers?: Paper[]) => {
     // Get existing users or initialize empty array
     const storedUsers = JSON.parse(localStorage.getItem('tutor-quest-users') || '[]');
     
@@ -125,6 +140,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           role: 'student',
           gender,
           studentCode: studentCode || `S-${Math.floor(Math.random() * 10000)}`,
+          papers: papers || [],
           avatar: '/placeholder.svg'
         };
         break;
@@ -137,6 +153,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           gender,
           points: 0,
           bankNumber: bankNumber || '',
+          papers: papers || [],
           avatar: '/placeholder.svg'
         };
         break;

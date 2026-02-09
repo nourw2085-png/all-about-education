@@ -1,12 +1,13 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, AVAILABLE_PAPERS, Paper } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/components/ui/use-toast';
 import { ArrowLeft, Plus, X } from 'lucide-react';
 
@@ -20,6 +21,7 @@ const Register = () => {
   const [studentCode, setStudentCode] = useState('');
   const [studentCodes, setStudentCodes] = useState<string[]>([]);
   const [currentStudentCode, setCurrentStudentCode] = useState('');
+  const [selectedPapers, setSelectedPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(false);
   
   const { register, role } = useAuth();
@@ -101,6 +103,15 @@ const Register = () => {
       });
       return;
     }
+
+    if ((role === 'student' || role === 'assistant') && selectedPapers.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one paper",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       setLoading(true);
@@ -115,7 +126,7 @@ const Register = () => {
         return;
       }
       
-      await register(name, email, password, role, gender, bankNumber, studentCode, studentCodes);
+      await register(name, email, password, role, gender, bankNumber, studentCode, studentCodes, selectedPapers);
       
       toast({
         title: "Success",
@@ -234,6 +245,32 @@ const Register = () => {
                   onChange={(e) => setBankNumber(e.target.value)}
                   required
                 />
+              </div>
+            )}
+            
+            {(role === 'student' || role === 'assistant') && (
+              <div className="space-y-2">
+                <Label>Papers</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {AVAILABLE_PAPERS.map((paper) => (
+                    <div key={paper} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`paper-${paper}`}
+                        checked={selectedPapers.includes(paper)}
+                        onCheckedChange={(checked) => {
+                          setSelectedPapers(prev =>
+                            checked
+                              ? [...prev, paper]
+                              : prev.filter(p => p !== paper)
+                          );
+                        }}
+                      />
+                      <Label htmlFor={`paper-${paper}`} className="text-sm font-normal cursor-pointer">
+                        {paper}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
             
