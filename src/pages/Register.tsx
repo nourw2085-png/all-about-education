@@ -24,7 +24,7 @@ const Register = () => {
   const [selectedPapers, setSelectedPapers] = useState<Paper[]>([]);
   const [loading, setLoading] = useState(false);
   
-  const { register, role } = useAuth();
+  const { register, signInWithGoogle, role } = useAuth();
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -129,11 +129,11 @@ const Register = () => {
       await register(name, email, password, role, gender, bankNumber, studentCode, studentCodes, selectedPapers);
       
       toast({
-        title: "Success",
-        description: "Registration successful",
+        title: "Check your email",
+        description: "We sent a verification link to your email. Click it to activate your account.",
       });
       
-      navigate('/dashboard');
+      navigate('/login');
     } catch (error) {
       toast({
         title: "Registration failed",
@@ -333,6 +333,24 @@ const Register = () => {
               disabled={loading}
             >
               {loading ? 'Registering...' : 'Register'}
+            </Button>
+            <div className="relative w-full">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">Or</span></div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={loading}
+              onClick={async () => {
+                try { await signInWithGoogle(); }
+                catch (err) {
+                  toast({ title: 'Google sign-in failed', description: err instanceof Error ? err.message : 'Try again', variant: 'destructive' });
+                }
+              }}
+            >
+              Continue with Google
             </Button>
             <div className="text-center text-sm">
               Already have an account?{' '}
