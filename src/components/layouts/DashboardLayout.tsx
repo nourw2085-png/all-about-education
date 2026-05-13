@@ -12,7 +12,8 @@ import {
   LogOut,
   Menu,
   X,
-  Settings
+  Settings,
+  Trophy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -96,6 +97,7 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
         roleSpecificItems = [
           { icon: <MessageSquare size={20} />, label: 'Questions', path: '/questions' },
           { icon: <FileText size={20} />, label: 'Assignments', path: '/assignments' },
+          { icon: <Trophy size={20} />, label: 'Daily Quiz', path: '/daily-quiz' },
           { icon: <BookOpen size={20} />, label: 'Materials', path: '/materials' },
           { icon: <CalendarCheck size={20} />, label: 'Attendance', path: '/attendance' },
         ];

@@ -15,6 +15,7 @@ import Attendance from "./pages/Attendance";
 import Students from "./pages/Students";
 import Assistants from "./pages/Assistants";
 import MyChild from "./pages/MyChild";
+import DailyQuiz from "./pages/DailyQuiz";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/students" element={<Students />} />
             <Route path="/assistants" element={<Assistants />} />
             <Route path="/my-child" element={<MyChild />} />
+            <Route path="/daily-quiz" element={<DailyQuiz />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
