@@ -1,5 +1,7 @@
-
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable';
+import type { Session } from '@supabase/supabase-js';
 
 export type UserRole = 'student' | 'assistant' | 'teacher' | 'parent' | null;
 export type Gender = 'male' | 'female';
@@ -36,12 +38,24 @@ interface AuthContextType {
   user: User | null;
   role: UserRole;
   isAuthenticated: boolean;
-  login: (email: string, password: string, role: UserRole, gender: Gender) => Promise<void>;
-  register: (name: string, email: string, password: string, role: UserRole, gender: Gender, bankNumber?: string, studentCode?: string, studentCodes?: string[], papers?: Paper[]) => Promise<void>;
-  logout: () => void;
+  loading: boolean;
+  login: (email: string, password: string, role?: UserRole, gender?: Gender) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    role: UserRole,
+    gender: Gender,
+    bankNumber?: string,
+    studentCode?: string,
+    studentCodes?: string[],
+    papers?: Paper[],
+  ) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
   setRole: (role: UserRole) => void;
-  updateUserBankNumber?: (bankNumber: string) => void;
-  updateUserAvatar: (avatar: string) => void;
+  updateUserBankNumber?: (bankNumber: string) => Promise<void>;
+  updateUserAvatar: (avatar: string) => Promise<void>;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
 }
@@ -49,224 +63,188 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  return ctx;
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<UserRole>(null);
+  const [role, setRoleState] = useState<UserRole>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
-  const isAuthenticated = !!user;
-
-  // Initialize user from localStorage on mount
+  // Dark mode (kept from previous impl)
   useEffect(() => {
-    const storedUser = localStorage.getItem('tutor-quest-user');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setRole(parsedUser.role);
-    }
-    
-    // Check for dark mode preference
-    const darkModePreference = localStorage.getItem('tutor-quest-dark-mode');
-    if (darkModePreference) {
-      setIsDarkMode(darkModePreference === 'true');
-    } else {
-      // Default to system preference if available
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDarkMode(prefersDark);
-    }
+    const stored = localStorage.getItem('tutor-quest-dark-mode');
+    if (stored) setIsDarkMode(stored === 'true');
+    else setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+    // restore role-selection (used by landing page → login flow)
+    const r = localStorage.getItem('tutor-quest-selected-role') as UserRole;
+    if (r) setRoleState(r);
   }, []);
 
-  // Apply dark mode class to document when isDarkMode changes
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    localStorage.setItem('tutor-quest-dark-mode', isDarkMode.toString());
+    document.documentElement.classList.toggle('dark', isDarkMode);
+    localStorage.setItem('tutor-quest-dark-mode', String(isDarkMode));
   }, [isDarkMode]);
 
-  const login = async (email: string, password: string, role: UserRole, gender: Gender) => {
-    // In a real app, this would be an API call to authenticate
-    // For now we'll simulate with mock data based on role
-    
-    // Check if user exists in localStorage
-    const storedUsers = JSON.parse(localStorage.getItem('tutor-quest-users') || '[]');
-    const foundUser = storedUsers.find((u: User) => u.email === email && role === u.role);
-    
-    if (!foundUser) {
-      throw new Error("User not found. Please register first.");
-    }
-    
-    // Wait for 1 second to simulate network request
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setUser(foundUser);
-    setRole(role);
-    
-    // Store in localStorage for persistence
-    localStorage.setItem('tutor-quest-user', JSON.stringify(foundUser));
-  };
+  const fetchProfile = useCallback(async (userId: string, fallbackEmail: string) => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-  const register = async (name: string, email: string, password: string, role: UserRole, gender: Gender, bankNumber?: string, studentCode?: string, studentCodes?: string[], papers?: Paper[]) => {
-    // Get existing users or initialize empty array
-    const storedUsers = JSON.parse(localStorage.getItem('tutor-quest-users') || '[]');
-    
-    // Check if user already exists with this email and role
-    const userExists = storedUsers.some((user: User) => user.email === email && user.role === role);
-    if (userExists) {
-      throw new Error('User with this email and role already exists');
-    }
-    
-    // Generate a new ID (in a real app this would come from the backend)
-    const id = `${role}-${Date.now()}`;
-    
-    // Create new user based on role
-    let newUser: User;
-    
-    switch (role) {
-      case 'student':
-        newUser = {
-          id,
-          name,
-          email,
-          role: 'student',
-          gender,
-          studentCode: studentCode || `S-${Math.floor(Math.random() * 10000)}`,
-          papers: papers || [],
-          avatar: '/placeholder.svg'
-        };
-        break;
-      case 'assistant':
-        newUser = {
-          id,
-          name,
-          email,
-          role: 'assistant',
-          gender,
-          points: 0,
-          bankNumber: bankNumber || '',
-          papers: papers || [],
-          avatar: '/placeholder.svg'
-        };
-        break;
-      case 'teacher':
-        newUser = {
-          id,
-          name,
-          email,
-          role: 'teacher',
-          gender,
-          avatar: '/placeholder.svg'
-        };
-        break;
-      case 'parent':
-        newUser = {
-          id,
-          name,
-          email,
-          role: 'parent',
-          gender,
-          studentCodes: studentCodes || [], // Store the student codes for parents
-          avatar: '/placeholder.svg'
-        };
-        break;
-      default:
-        throw new Error('Invalid role');
-    }
-    
-    // Store the password in a separate object (in a real app this would be hashed and stored securely)
-    const passwordEntry = { email, role, password };
-    const passwords = JSON.parse(localStorage.getItem('tutor-quest-passwords') || '[]');
-    passwords.push(passwordEntry);
-    localStorage.setItem('tutor-quest-passwords', JSON.stringify(passwords));
-    
-    // Add to users array and save to localStorage
-    storedUsers.push(newUser);
-    localStorage.setItem('tutor-quest-users', JSON.stringify(storedUsers));
-    
-    // Wait for 1 second to simulate network request
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Log in the user automatically
-    setUser(newUser);
-    setRole(role);
-    localStorage.setItem('tutor-quest-user', JSON.stringify(newUser));
-  };
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId);
 
-  const updateUserBankNumber = (bankNumber: string) => {
-    if (user && user.role === 'assistant') {
-      const updatedUser = {
-        ...user,
-        bankNumber
-      };
-      setUser(updatedUser);
-      localStorage.setItem('tutor-quest-user', JSON.stringify(updatedUser));
-      
-      // Also update in the users array
-      const storedUsers = JSON.parse(localStorage.getItem('tutor-quest-users') || '[]');
-      const updatedUsers = storedUsers.map((u: User) => {
-        if (u.id === user.id) {
-          return updatedUser;
-        }
-        return u;
+    const userRole = (roles?.[0]?.role ?? null) as UserRole;
+
+    if (!profile) {
+      setUser({
+        id: userId,
+        name: fallbackEmail.split('@')[0],
+        email: fallbackEmail,
+        role: userRole,
+        gender: 'male',
       });
-      localStorage.setItem('tutor-quest-users', JSON.stringify(updatedUsers));
-    }
-  };
-
-  const updateUserAvatar = (avatar: string) => {
-    if (user) {
-      const updatedUser = {
-        ...user,
-        avatar
-      };
-      setUser(updatedUser);
-      localStorage.setItem('tutor-quest-user', JSON.stringify(updatedUser));
-      
-      // Also update in the users array
-      const storedUsers = JSON.parse(localStorage.getItem('tutor-quest-users') || '[]');
-      const updatedUsers = storedUsers.map((u: User) => {
-        if (u.id === user.id) {
-          return updatedUser;
-        }
-        return u;
+    } else {
+      setUser({
+        id: userId,
+        name: profile.name,
+        email: profile.email,
+        role: userRole,
+        gender: profile.gender as Gender,
+        points: profile.points ?? 0,
+        bankNumber: profile.bank_number ?? undefined,
+        avatar: profile.avatar_url ?? '/placeholder.svg',
+        studentCode: profile.student_code ?? undefined,
+        studentCodes: profile.linked_student_codes ?? [],
+        papers: (profile.papers ?? []) as Paper[],
       });
-      localStorage.setItem('tutor-quest-users', JSON.stringify(updatedUsers));
     }
+    setRoleState(userRole);
+  }, []);
+
+  // Auth state listener — set up BEFORE getSession
+  useEffect(() => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      if (newSession?.user) {
+        // Defer DB call to avoid deadlock inside the callback
+        setTimeout(() => {
+          fetchProfile(newSession.user.id, newSession.user.email ?? '');
+        }, 0);
+      } else {
+        setUser(null);
+        setRoleState(null);
+      }
+    });
+
+    supabase.auth.getSession().then(({ data: { session: existing } }) => {
+      setSession(existing);
+      if (existing?.user) {
+        fetchProfile(existing.user.id, existing.user.email ?? '').finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.subscription.unsubscribe();
+  }, [fetchProfile]);
+
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message);
   };
 
-  const toggleDarkMode = () => {
-    setIsDarkMode(prev => !prev);
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    role: UserRole,
+    gender: Gender,
+    bankNumber?: string,
+    studentCode?: string,
+    studentCodes?: string[],
+    papers?: Paper[],
+  ) => {
+    const redirectUrl = `${window.location.origin}/dashboard`;
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          name,
+          role,
+          gender,
+          papers: papers ?? [],
+          bank_number: bankNumber || null,
+          student_code: studentCode || null,
+          linked_student_codes: studentCodes ?? [],
+        },
+      },
+    });
+    if (error) throw new Error(error.message);
   };
 
-  const logout = () => {
+  const signInWithGoogle = async () => {
+    const result = await lovable.auth.signInWithOAuth('google', {
+      redirect_uri: window.location.origin + '/dashboard',
+    });
+    if (result.error) throw new Error(result.error.message ?? 'Google sign-in failed');
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    setRole(null);
-    localStorage.removeItem('tutor-quest-user');
+    setRoleState(null);
+    setSession(null);
   };
+
+  const setRole = (r: UserRole) => {
+    setRoleState(r);
+    if (r) localStorage.setItem('tutor-quest-selected-role', r);
+    else localStorage.removeItem('tutor-quest-selected-role');
+  };
+
+  const updateUserBankNumber = async (bankNumber: string) => {
+    if (!user) return;
+    await supabase.from('profiles').update({ bank_number: bankNumber }).eq('user_id', user.id);
+    setUser({ ...user, bankNumber });
+  };
+
+  const updateUserAvatar = async (avatar: string) => {
+    if (!user) return;
+    await supabase.from('profiles').update({ avatar_url: avatar }).eq('user_id', user.id);
+    setUser({ ...user, avatar });
+  };
+
+  const toggleDarkMode = () => setIsDarkMode((v) => !v);
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      role, 
-      isAuthenticated,
-      login,
-      register,
-      logout,
-      setRole,
-      updateUserBankNumber,
-      updateUserAvatar,
-      isDarkMode,
-      toggleDarkMode
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        role,
+        isAuthenticated: !!session,
+        loading,
+        login,
+        register,
+        signInWithGoogle,
+        logout,
+        setRole,
+        updateUserBankNumber,
+        updateUserAvatar,
+        isDarkMode,
+        toggleDarkMode,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
