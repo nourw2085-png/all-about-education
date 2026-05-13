@@ -16,7 +16,7 @@ const Login = () => {
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [loading, setLoading] = useState(false);
   
-  const { login, role } = useAuth();
+  const { login, signInWithGoogle, role } = useAuth();
   const navigate = useNavigate();
   
   const handleLogin = async (e: React.FormEvent) => {
