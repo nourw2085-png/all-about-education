@@ -39,6 +39,7 @@ interface AuthContextType {
   role: UserRole;
   isAuthenticated: boolean;
   loading: boolean;
+  authReady: boolean;
   login: (email: string, password: string, role?: UserRole, gender?: Gender) => Promise<void>;
   register: (
     name: string,
@@ -73,6 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [role, setRoleState] = useState<UserRole>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
 
   // Dark mode (kept from previous impl)
@@ -90,19 +92,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('tutor-quest-dark-mode', String(isDarkMode));
   }, [isDarkMode]);
 
-  const fetchProfile = useCallback(async (userId: string, fallbackEmail: string) => {
-    const { data: profile } = await supabase
+  const fetchProfile = useCallback(async (userId: string, fallbackEmail: string, selectedRole?: UserRole) => {
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('user_id', userId)
       .maybeSingle();
 
-    const { data: roles } = await supabase
+    const { data: roles, error: rolesError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId);
 
-    const userRole = (roles?.[0]?.role ?? null) as UserRole;
+    if (profileError) throw profileError;
+    if (rolesError) throw rolesError;
+
+    const userRole = (roles?.[0]?.role ?? selectedRole ?? null) as UserRole;
 
     if (!profile) {
       setUser({
@@ -130,6 +135,77 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setRoleState(userRole);
   }, []);
 
+  const ensureUserSetup = useCallback(async (
+    authUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> },
+    selectedRole?: UserRole,
+  ) => {
+    const metadata = authUser.user_metadata ?? {};
+    const resolvedRole = (selectedRole ?? (typeof metadata.role === 'string' ? metadata.role : null)) as UserRole;
+    const resolvedGender = (typeof metadata.gender === 'string' ? metadata.gender : 'male') as Gender;
+    const resolvedName =
+      typeof metadata.name === 'string' && metadata.name.trim().length > 0
+        ? metadata.name
+        : typeof metadata.full_name === 'string' && metadata.full_name.trim().length > 0
+          ? metadata.full_name
+          : (authUser.email ?? '').split('@')[0] || 'User';
+    const resolvedEmail = authUser.email ?? '';
+    const resolvedPapers = Array.isArray(metadata.papers)
+      ? metadata.papers.filter((paper): paper is Paper => typeof paper === 'string' && AVAILABLE_PAPERS.includes(paper as Paper))
+      : [];
+    const resolvedLinkedStudentCodes = Array.isArray(metadata.linked_student_codes)
+      ? metadata.linked_student_codes.filter((code): code is string => typeof code === 'string' && code.trim().length > 0)
+      : [];
+    const resolvedStudentCode = typeof metadata.student_code === 'string' && metadata.student_code.trim().length > 0
+      ? metadata.student_code
+      : null;
+    const resolvedBankNumber = typeof metadata.bank_number === 'string' && metadata.bank_number.trim().length > 0
+      ? metadata.bank_number
+      : null;
+
+    const { data: existingProfile, error: existingProfileError } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('user_id', authUser.id)
+      .maybeSingle();
+
+    if (existingProfileError) throw existingProfileError;
+
+    if (!existingProfile) {
+      const { error: profileInsertError } = await supabase.from('profiles').insert({
+        user_id: authUser.id,
+        name: resolvedName,
+        email: resolvedEmail,
+        gender: resolvedGender,
+        papers: resolvedPapers,
+        bank_number: resolvedBankNumber,
+        student_code: resolvedRole === 'student' ? resolvedStudentCode : null,
+        linked_student_codes: resolvedLinkedStudentCodes,
+      });
+
+      if (profileInsertError) throw profileInsertError;
+    }
+
+    if (resolvedRole) {
+      const { data: existingRole, error: existingRoleError } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', authUser.id)
+        .eq('role', resolvedRole)
+        .maybeSingle();
+
+      if (existingRoleError) throw existingRoleError;
+
+      if (!existingRole) {
+        const { error: roleInsertError } = await supabase.from('user_roles').insert({
+          user_id: authUser.id,
+          role: resolvedRole,
+        });
+
+        if (roleInsertError) throw roleInsertError;
+      }
+    }
+  }, []);
+
   // Auth state listener — set up BEFORE getSession
   useEffect(() => {
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
@@ -137,25 +213,56 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (newSession?.user) {
         // Defer DB call to avoid deadlock inside the callback
         setTimeout(() => {
-          fetchProfile(newSession.user.id, newSession.user.email ?? '');
+          fetchProfile(
+            newSession.user.id,
+            newSession.user.email ?? '',
+            (typeof newSession.user.user_metadata?.role === 'string' ? newSession.user.user_metadata.role : null) as UserRole,
+          )
+            .catch(() => ensureUserSetup(newSession.user as typeof newSession.user & { user_metadata?: Record<string, unknown> }))
+            .then(() => fetchProfile(
+              newSession.user.id,
+              newSession.user.email ?? '',
+              (typeof newSession.user.user_metadata?.role === 'string' ? newSession.user.user_metadata.role : null) as UserRole,
+            ))
+            .finally(() => {
+              setLoading(false);
+              setAuthReady(true);
+            });
         }, 0);
       } else {
         setUser(null);
         setRoleState(null);
+        setLoading(false);
+        setAuthReady(true);
       }
     });
 
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
       setSession(existing);
       if (existing?.user) {
-        fetchProfile(existing.user.id, existing.user.email ?? '').finally(() => setLoading(false));
+        fetchProfile(
+          existing.user.id,
+          existing.user.email ?? '',
+          (typeof existing.user.user_metadata?.role === 'string' ? existing.user.user_metadata.role : null) as UserRole,
+        )
+          .catch(() => ensureUserSetup(existing.user as typeof existing.user & { user_metadata?: Record<string, unknown> }))
+          .then(() => fetchProfile(
+            existing.user.id,
+            existing.user.email ?? '',
+            (typeof existing.user.user_metadata?.role === 'string' ? existing.user.user_metadata.role : null) as UserRole,
+          ))
+          .finally(() => {
+            setLoading(false);
+            setAuthReady(true);
+          });
       } else {
         setLoading(false);
+        setAuthReady(true);
       }
     });
 
     return () => subscription.subscription.unsubscribe();
-  }, [fetchProfile]);
+  }, [ensureUserSetup, fetchProfile]);
 
   const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -174,7 +281,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     papers?: Paper[],
   ) => {
     const redirectUrl = `${window.location.origin}/dashboard`;
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -191,6 +298,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       },
     });
     if (error) throw new Error(error.message);
+
+    if (data.user && data.session) {
+      await ensureUserSetup(
+        {
+          id: data.user.id,
+          email: data.user.email,
+          user_metadata: data.user.user_metadata as Record<string, unknown>,
+        },
+        role,
+      );
+      await fetchProfile(data.user.id, data.user.email ?? email, role);
+    }
+
+    return {
+      needsEmailVerification: !data.session,
+    };
   };
 
   const signInWithGoogle = async () => {
@@ -234,6 +357,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         role,
         isAuthenticated: !!session,
         loading,
+        authReady,
         login,
         register,
         signInWithGoogle,
