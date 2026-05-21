@@ -9,15 +9,23 @@ import TeacherDashboard from '@/components/dashboards/TeacherDashboard';
 import ParentDashboard from '@/components/dashboards/ParentDashboard';
 
 const Dashboard = () => {
-  const { user, isAuthenticated, role } = useAuth();
+  const { user, isAuthenticated, role, loading, authReady } = useAuth();
   const navigate = useNavigate();
   
   useEffect(() => {
+    if (!authReady || loading) {
+      return;
+    }
+
     if (!isAuthenticated) {
       navigate('/');
     }
-  }, [isAuthenticated, navigate]);
+  }, [authReady, isAuthenticated, loading, navigate]);
   
+  if (loading || !authReady) {
+    return null;
+  }
+
   if (!user || !role) {
     return null;
   }
