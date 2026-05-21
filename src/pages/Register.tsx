@@ -26,6 +26,23 @@ const Register = () => {
   
   const { register, signInWithGoogle, role } = useAuth();
   const navigate = useNavigate();
+
+  const getRegistrationError = (error: unknown) => {
+    if (!(error instanceof Error)) return 'We could not create your account. Please try again.';
+
+    const message = error.message.toLowerCase();
+    if (message.includes('already registered') || message.includes('already been registered') || message.includes('user already registered')) {
+      return 'This email is already in use. Try logging in instead.';
+    }
+    if (message.includes('password')) {
+      return 'Your password does not meet the security requirements.';
+    }
+    if (message.includes('invalid email')) {
+      return 'Please enter a valid email address.';
+    }
+
+    return error.message;
+  };
   
   useEffect(() => {
     if (!role) {
@@ -126,18 +143,27 @@ const Register = () => {
         return;
       }
       
-      await register(name, email, password, role, gender, bankNumber, studentCode, studentCodes, selectedPapers);
-      
+      const result = await register(name, email, password, role, gender, bankNumber, studentCode, studentCodes, selectedPapers);
+
+      if (result.needsEmailVerification) {
+        toast({
+          title: "Check your email",
+          description: "We sent a verification link to your email. Click it to activate your account.",
+        });
+        navigate('/login');
+        return;
+      }
+
       toast({
-        title: "Check your email",
-        description: "We sent a verification link to your email. Click it to activate your account.",
+        title: "Account created",
+        description: `Welcome! Redirecting you to your ${role} dashboard.`,
       });
-      
-      navigate('/login');
+
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       toast({
         title: "Registration failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        description: getRegistrationError(error),
         variant: "destructive",
       });
     } finally {
