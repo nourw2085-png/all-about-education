@@ -34,6 +34,10 @@ interface User {
   papers?: Paper[];
 }
 
+interface RegisterResult {
+  needsEmailVerification: boolean;
+}
+
 interface AuthContextType {
   user: User | null;
   role: UserRole;
@@ -51,7 +55,7 @@ interface AuthContextType {
     studentCode?: string,
     studentCodes?: string[],
     papers?: Paper[],
-  ) => Promise<void>;
+  ) => Promise<RegisterResult>;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   setRole: (role: UserRole) => void;
@@ -213,12 +217,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (newSession?.user) {
         // Defer DB call to avoid deadlock inside the callback
         setTimeout(() => {
-          fetchProfile(
-            newSession.user.id,
-            newSession.user.email ?? '',
+          ensureUserSetup(
+            newSession.user as typeof newSession.user & { user_metadata?: Record<string, unknown> },
             (typeof newSession.user.user_metadata?.role === 'string' ? newSession.user.user_metadata.role : null) as UserRole,
           )
-            .catch(() => ensureUserSetup(newSession.user as typeof newSession.user & { user_metadata?: Record<string, unknown> }))
             .then(() => fetchProfile(
               newSession.user.id,
               newSession.user.email ?? '',
@@ -240,12 +242,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
       setSession(existing);
       if (existing?.user) {
-        fetchProfile(
-          existing.user.id,
-          existing.user.email ?? '',
+        ensureUserSetup(
+          existing.user as typeof existing.user & { user_metadata?: Record<string, unknown> },
           (typeof existing.user.user_metadata?.role === 'string' ? existing.user.user_metadata.role : null) as UserRole,
         )
-          .catch(() => ensureUserSetup(existing.user as typeof existing.user & { user_metadata?: Record<string, unknown> }))
           .then(() => fetchProfile(
             existing.user.id,
             existing.user.email ?? '',
