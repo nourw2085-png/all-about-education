@@ -122,9 +122,7 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
       case 'parent':
         roleSpecificItems = [
           { icon: <User size={20} />, label: 'My Child', path: '/my-child' },
-          { icon: <FileText size={20} />, label: 'Assignments', path: '/assignments' },
-          { icon: <BookOpen size={20} />, label: 'Materials', path: '/materials' },
-          { icon: <CalendarCheck size={20} />, label: 'Attendance', path: '/attendance' },
+          { icon: <MessageSquare size={20} />, label: 'Contact Assistant', path: '/contact-assistant' },
         ];
         break;
     }
