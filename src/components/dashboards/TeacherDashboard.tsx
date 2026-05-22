@@ -1,322 +1,176 @@
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { Users, MessageSquare, AlertTriangle, Award, Activity, Clock } from 'lucide-react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { mockQuestions, mockAssignments, mockStudent, mockAssistant } from "@/data/mockData";
-import { 
-  Users, 
-  User, 
-  FileText, 
-  MessageSquare, 
-  BookOpen, 
-  CalendarCheck,
-  ChevronRight
-} from "lucide-react";
+interface AssistantRow {
+  assistant_id: string;
+  name: string;
+  avatar_url: string | null;
+  total_points: number;
+  weekly_points: number;
+  answers: number;
+  assignments_graded: number;
+  quizzes_graded: number;
+}
+
+interface PendingConv {
+  id: string;
+  student_id: string;
+  assistant_id: string;
+  last_message_at: string;
+  student_name?: string;
+  last_sender_id?: string;
+  minutes_waiting?: number;
+}
 
 const TeacherDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
-  // Count of pending assignments to review
-  const pendingAssignments = mockAssignments.filter(a => a.status === 'submitted').length;
-  
-  // Count of questions in progress or pending
-  const activeQuestions = mockQuestions.filter(q => q.status === 'pending' || q.status === 'in-progress').length;
-  
+  const [studentCount, setStudentCount] = useState(0);
+  const [assistantRows, setAssistantRows] = useState<AssistantRow[]>([]);
+  const [pending, setPending] = useState<PendingConv[]>([]);
+  const [activeStudents, setActiveStudents] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data: roles } = await supabase.from('user_roles').select('user_id,role');
+      const students = (roles ?? []).filter(r => r.role === 'student').map(r => r.user_id);
+      setStudentCount(students.length);
+
+      const { data: scores } = await supabase
+        .from('assistant_scores')
+        .select('*')
+        .order('weekly_points', { ascending: false });
+      setAssistantRows((scores ?? []) as AssistantRow[]);
+
+      // Pending conversations: last message from a student waiting > 0
+      const { data: convs } = await supabase.from('conversations').select('*').order('last_message_at', { ascending: false }).limit(30);
+      const convList = (convs ?? []) as PendingConv[];
+      if (convList.length) {
+        const ids = convList.map(c => c.id);
+        const { data: lastMsgs } = await supabase
+          .from('messages')
+          .select('conversation_id,sender_id,created_at')
+          .in('conversation_id', ids)
+          .order('created_at', { ascending: false });
+        const seen = new Set<string>();
+        const lastBy = new Map<string, { sender_id: string; created_at: string }>();
+        (lastMsgs ?? []).forEach(m => {
+          if (seen.has(m.conversation_id)) return;
+          seen.add(m.conversation_id);
+          lastBy.set(m.conversation_id, { sender_id: m.sender_id, created_at: m.created_at });
+        });
+        const pendingFiltered = convList.filter(c => {
+          const lm = lastBy.get(c.id);
+          return lm && lm.sender_id === c.student_id;
+        }).map(c => {
+          const lm = lastBy.get(c.id)!;
+          return { ...c, last_sender_id: lm.sender_id, minutes_waiting: Math.round((Date.now() - new Date(lm.created_at).getTime()) / 60000) };
+        });
+        // Get student names
+        const studentIds = pendingFiltered.map(p => p.student_id);
+        if (studentIds.length) {
+          const { data: profs } = await supabase.from('profiles').select('user_id,name').in('user_id', studentIds);
+          const map = new Map((profs ?? []).map(p => [p.user_id, p.name]));
+          pendingFiltered.forEach(p => p.student_name = map.get(p.student_id));
+        }
+        setPending(pendingFiltered.slice(0, 5));
+      }
+
+      // Active students = students who sent a message in last 7 days
+      const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+      const { data: recentMsgs } = await supabase
+        .from('messages')
+        .select('sender_id')
+        .gte('created_at', since);
+      const recentSet = new Set((recentMsgs ?? []).map(m => m.sender_id));
+      setActiveStudents(students.filter(s => recentSet.has(s)).length);
+    })();
+  }, [user]);
+
+  const totalWeekly = assistantRows.reduce((s, a) => s + a.weekly_points, 0);
+
   return (
-    <div className="space-y-8">
-      {/* Welcome section */}
-      <section className="bg-edu-purple-50 rounded-xl p-6 flex flex-col md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-edu-purple-800">Welcome, {user?.name}</h2>
-          <p className="text-gray-600">Supervise assistants, manage assignments, and monitor student progress.</p>
-        </div>
-        <div className="mt-4 md:mt-0 space-x-3 flex">
-          <Button onClick={() => navigate('/assignments/create')} className="bg-edu-purple-600 hover:bg-edu-purple-700">
-            <FileText size={18} className="mr-2" /> New Assignment
-          </Button>
-          <Button onClick={() => navigate('/materials/upload')} variant="outline" className="border-edu-purple-300">
-            <BookOpen size={18} className="mr-2" /> Upload Material
-          </Button>
-        </div>
+    <div className="space-y-6">
+      <section className="bg-edu-purple-50 dark:bg-edu-purple-900/20 rounded-xl p-6">
+        <h2 className="text-2xl font-bold text-edu-purple-800 dark:text-edu-purple-200">Welcome, {user?.name}</h2>
+        <p className="text-muted-foreground">Monitor students, assistants, and platform activity.</p>
       </section>
-      
-      {/* Stats grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Students card */}
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs flex items-center gap-2"><Users size={14} />Total Students</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{studentCount}</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs flex items-center gap-2"><Activity size={14} />Active (7d)</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{activeStudents}</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs flex items-center gap-2"><MessageSquare size={14} />Pending Q's</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold text-amber-600">{pending.length}</div></CardContent></Card>
+        <Card><CardHeader className="pb-2"><CardTitle className="text-xs flex items-center gap-2"><Award size={14} />Assistant Pts (7d)</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{totalWeekly}</div></CardContent></Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <Users size={18} className="mr-2 text-edu-purple-600" />
-              Students
-            </CardTitle>
-            <CardDescription>
-              1 Total Students
-            </CardDescription>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><AlertTriangle size={18} className="text-amber-500" />Pending Student Questions</CardTitle>
+            <CardDescription>Conversations awaiting an assistant reply</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="mt-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
-                onClick={() => navigate('/students')}
-              >
-                <span className="flex-grow text-left">View Students</span>
-                <ChevronRight size={16} />
-              </Button>
-            </div>
+          <CardContent className="space-y-3">
+            {pending.length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">No pending questions 🎉</p>}
+            {pending.map(p => (
+              <div key={p.id} className="flex items-center justify-between p-3 rounded-lg border">
+                <div>
+                  <p className="font-medium text-sm">{p.student_name ?? 'Student'}</p>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Clock size={12} /> waiting {p.minutes_waiting}m</p>
+                </div>
+                <Badge variant={p.minutes_waiting! > 60 ? 'destructive' : 'secondary'}>
+                  {p.minutes_waiting! > 60 ? 'Overdue' : 'Pending'}
+                </Badge>
+              </div>
+            ))}
           </CardContent>
         </Card>
-        
-        {/* Assistants card */}
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <User size={18} className="mr-2 text-edu-purple-600" />
-              Assistants
-            </CardTitle>
-            <CardDescription>
-              1 Total Assistants
-            </CardDescription>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Award size={18} className="text-edu-purple-600" />Assistant Performance</CardTitle>
+            <CardDescription>Weekly leaderboard with point breakdown</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="mt-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
-                onClick={() => navigate('/assistants')}
-              >
-                <span className="flex-grow text-left">Manage Assistants</span>
-                <ChevronRight size={16} />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Assignments card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <FileText size={18} className="mr-2 text-edu-purple-600" />
-              Assignments
-            </CardTitle>
-            <CardDescription>
-              {pendingAssignments} pending review
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mt-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
-                onClick={() => navigate('/assignments')}
-              >
-                <span className="flex-grow text-left">Review Assignments</span>
-                <ChevronRight size={16} />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Questions card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <MessageSquare size={18} className="mr-2 text-edu-purple-600" />
-              Questions
-            </CardTitle>
-            <CardDescription>
-              {activeQuestions} active questions
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mt-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
-                onClick={() => navigate('/questions')}
-              >
-                <span className="flex-grow text-left">View Questions</span>
-                <ChevronRight size={16} />
-              </Button>
-            </div>
+          <CardContent className="space-y-3">
+            {assistantRows.length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">No assistants yet.</p>}
+            {assistantRows.slice(0, 6).map((a, i) => (
+              <div key={a.assistant_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/40">
+                <span className="text-sm font-bold w-5">{i + 1}</span>
+                <Avatar className="h-9 w-9"><AvatarImage src={a.avatar_url ?? undefined} /><AvatarFallback>{a.name?.charAt(0)}</AvatarFallback></Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{a.name}</p>
+                  <p className="text-xs text-muted-foreground">{a.answers} answers · {a.assignments_graded} graded · {a.quizzes_graded} quizzes</p>
+                </div>
+                <Badge>{a.weekly_points} pts</Badge>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>
-      
-      {/* Recent activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Student activities */}
-        <section>
-          <h2 className="text-xl font-bold mb-4">Recent Student Activities</h2>
-          <Card>
-            <CardContent className="pt-6">
-              <ul className="space-y-4">
-                <li className="flex items-start pb-4 border-b border-gray-100">
-                  <div className="bg-edu-purple-100 rounded-full p-2 mr-3">
-                    <FileText size={16} className="text-edu-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{mockStudent.name} submitted an assignment</p>
-                    <p className="text-xs text-gray-500">History Essay</p>
-                    <p className="text-xs text-gray-400 mt-1">Today at 10:30 AM</p>
-                  </div>
-                </li>
-                <li className="flex items-start pb-4 border-b border-gray-100">
-                  <div className="bg-edu-purple-100 rounded-full p-2 mr-3">
-                    <MessageSquare size={16} className="text-edu-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{mockStudent.name} asked a question</p>
-                    <p className="text-xs text-gray-500">Help with calculus problem</p>
-                    <p className="text-xs text-gray-400 mt-1">Today at 2:22 PM</p>
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="bg-edu-purple-100 rounded-full p-2 mr-3">
-                    <CalendarCheck size={16} className="text-edu-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{mockStudent.name} attended class</p>
-                    <p className="text-xs text-gray-400 mt-1">Today at 9:00 AM</p>
-                  </div>
-                </li>
-              </ul>
-              <div className="mt-4 text-center">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
-                  onClick={() => navigate('/students')}
-                >
-                  View all student activities
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-        
-        {/* Assistant activities */}
-        <section>
-          <h2 className="text-xl font-bold mb-4">Recent Assistant Activities</h2>
-          <Card>
-            <CardContent className="pt-6">
-              <ul className="space-y-4">
-                <li className="flex items-start pb-4 border-b border-gray-100">
-                  <div className="bg-edu-purple-100 rounded-full p-2 mr-3">
-                    <MessageSquare size={16} className="text-edu-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{mockAssistant.name} answered a question</p>
-                    <p className="text-xs text-gray-500">Grammar check for essay</p>
-                    <p className="text-xs text-gray-400 mt-1">3 days ago</p>
-                  </div>
-                </li>
-                <li className="flex items-start pb-4 border-b border-gray-100">
-                  <div className="bg-edu-purple-100 rounded-full p-2 mr-3">
-                    <MessageSquare size={16} className="text-edu-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{mockAssistant.name} is helping with a question</p>
-                    <p className="text-xs text-gray-500">Physics question about momentum</p>
-                    <p className="text-xs text-gray-400 mt-1">Yesterday at 10:15 AM</p>
-                  </div>
-                </li>
-                <li className="flex items-start">
-                  <div className="bg-edu-purple-100 rounded-full p-2 mr-3">
-                    <FileText size={16} className="text-edu-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">{mockAssistant.name} graded an assignment</p>
-                    <p className="text-xs text-gray-500">Science Lab Report</p>
-                    <p className="text-xs text-gray-400 mt-1">4 days ago</p>
-                  </div>
-                </li>
-              </ul>
-              <div className="mt-4 text-center">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
-                  onClick={() => navigate('/assistants')}
-                >
-                  View all assistant activities
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-      </div>
-      
-      {/* Materials section */}
-      <section>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Learning Materials</h2>
-          <Button 
-            onClick={() => navigate('/materials/upload')} 
-            className="bg-edu-purple-600 hover:bg-edu-purple-700"
-          >
-            Upload New
-          </Button>
-        </div>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <ul className="space-y-3">
-              <li className="flex justify-between items-center pb-3 border-b border-gray-100">
-                <div className="flex items-center">
-                  <div className="bg-edu-purple-100 rounded-full p-2 mr-3">
-                    <BookOpen size={16} className="text-edu-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">Math Textbook PDF</p>
-                    <p className="text-xs text-gray-400">Uploaded on Apr 15, 2025</p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">View</Button>
-              </li>
-              <li className="flex justify-between items-center pb-3 border-b border-gray-100">
-                <div className="flex items-center">
-                  <div className="bg-edu-purple-100 rounded-full p-2 mr-3">
-                    <BookOpen size={16} className="text-edu-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">Physics Lecture Recording</p>
-                    <p className="text-xs text-gray-400">Uploaded on May 1, 2025</p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">View</Button>
-              </li>
-              <li className="flex justify-between items-center">
-                <div className="flex items-center">
-                  <div className="bg-edu-purple-100 rounded-full p-2 mr-3">
-                    <BookOpen size={16} className="text-edu-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">Chemistry Lab Demonstration</p>
-                    <p className="text-xs text-gray-400">Uploaded on May 4, 2025</p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">View</Button>
-              </li>
-            </ul>
-            <div className="mt-4 text-center">
-              <Button 
-                variant="ghost" 
-                className="text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
-                onClick={() => navigate('/materials')}
-              >
-                View all materials
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button onClick={() => navigate('/students')} variant="outline">View Students</Button>
+          <Button onClick={() => navigate('/assistants')} variant="outline">View Assistants</Button>
+          <Button onClick={() => navigate('/assignments')} variant="outline">Assignments</Button>
+          <Button onClick={() => navigate('/chat')} variant="outline">Monitor Chats</Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };

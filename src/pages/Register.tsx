@@ -145,6 +145,34 @@ const Register = () => {
       
       const result = await register(name, email, password, role, gender, bankNumber, studentCode, studentCodes, selectedPapers);
 
+      // Parent: resolve student_codes → user_ids and create parent_links
+      if (role === 'parent' && studentCodes.length > 0) {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          const { data: matches } = await supabase
+            .from('profiles')
+            .select('user_id,student_code')
+            .in('student_code', studentCodes);
+          const links = (matches ?? []).map(m => ({
+            parent_id: authUser.id,
+            student_id: m.user_id,
+            student_code: m.student_code!,
+          }));
+          if (links.length > 0) {
+            await supabase.from('parent_links').upsert(links, { onConflict: 'parent_id,student_id' });
+          }
+          const unmatched = studentCodes.filter(c => !(matches ?? []).some(m => m.student_code === c));
+          if (unmatched.length > 0) {
+            toast({
+              title: "Some codes weren't found",
+              description: `These codes didn't match any student: ${unmatched.join(', ')}. Ask your child to share their exact code.`,
+              variant: "destructive",
+            });
+          }
+        }
+      }
+
       if (result.needsEmailVerification) {
         toast({
           title: "Check your email",

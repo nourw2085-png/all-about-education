@@ -4,11 +4,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import RoleRoute from "@/components/auth/RoleRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import Questions from "./pages/Questions";
+import Chat from "./pages/Chat";
 import Materials from "./pages/Materials";
 import Assignments from "./pages/Assignments";
 import Attendance from "./pages/Attendance";
@@ -32,15 +33,37 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/questions" element={<Questions />} />
-            <Route path="/materials" element={<Materials />} />
-            <Route path="/assignments" element={<Assignments />} />
-            <Route path="/attendance" element={<Attendance />} />
-            <Route path="/students" element={<Students />} />
-            <Route path="/assistants" element={<Assistants />} />
-            <Route path="/my-child" element={<MyChild />} />
-            <Route path="/daily-quiz" element={<DailyQuiz />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+            {/* Chat: students, assistants, teachers (read-only monitoring) */}
+            <Route path="/chat" element={
+              <RoleRoute allow={['student', 'assistant', 'teacher']}><Chat /></RoleRoute>
+            } />
+            {/* Legacy /questions route → chat */}
+            <Route path="/questions" element={
+              <RoleRoute allow={['student', 'assistant', 'teacher']}><Chat /></RoleRoute>
+            } />
+
+            <Route path="/materials" element={
+              <RoleRoute allow={['student', 'assistant', 'teacher']}><Materials /></RoleRoute>
+            } />
+            <Route path="/assignments" element={
+              <RoleRoute allow={['student', 'assistant', 'teacher']}><Assignments /></RoleRoute>
+            } />
+            <Route path="/attendance" element={
+              <RoleRoute allow={['student', 'assistant', 'teacher', 'parent']}><Attendance /></RoleRoute>
+            } />
+            <Route path="/students" element={
+              <RoleRoute allow={['teacher', 'assistant']}><Students /></RoleRoute>
+            } />
+            <Route path="/assistants" element={
+              <RoleRoute allow={['teacher']}><Assistants /></RoleRoute>
+            } />
+            <Route path="/my-child" element={
+              <RoleRoute allow={['parent']}><MyChild /></RoleRoute>
+            } />
+            <Route path="/daily-quiz" element={
+              <RoleRoute allow={['student']}><DailyQuiz /></RoleRoute>
+            } />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
