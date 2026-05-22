@@ -212,29 +212,12 @@ const ParentDashboard = () => {
                     )}
                   </div>
                 </div>
-                <div className="bg-gray-50 md:w-32 p-4 flex justify-center items-center border-t md:border-t-0 md:border-l border-gray-200">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="w-full"
-                    onClick={() => navigate(`/assignments/${assignment.id}`)}
-                  >
-                    View Details
-                  </Button>
-                </div>
               </div>
             </Card>
           ))}
         </div>
-        <div className="mt-4 text-center">
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/assignments')}
-          >
-            View All Assignments
-          </Button>
-        </div>
       </section>
+
       
       {/* Attendance history */}
       <section>
@@ -265,15 +248,6 @@ const ParentDashboard = () => {
                   </span>
                 </div>
               ))}
-            </div>
-            <div className="mt-4 text-center">
-              <Button 
-                variant="ghost" 
-                className="text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
-                onClick={() => navigate('/attendance')}
-              >
-                View full attendance history
-              </Button>
             </div>
           </CardContent>
         </Card>
