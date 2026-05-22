@@ -14,6 +14,125 @@ export type Database = {
   }
   public: {
     Tables: {
+      conversations: {
+        Row: {
+          assistant_id: string
+          created_at: string
+          id: string
+          last_message_at: string
+          student_id: string
+        }
+        Insert: {
+          assistant_id: string
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          student_id: string
+        }
+        Update: {
+          assistant_id?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          attachment_type: string | null
+          attachment_url: string | null
+          content: string | null
+          conversation_id: string
+          created_at: string
+          id: string
+          sender_id: string
+          status: Database["public"]["Enums"]["message_status"]
+        }
+        Insert: {
+          attachment_type?: string | null
+          attachment_url?: string | null
+          content?: string | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          sender_id: string
+          status?: Database["public"]["Enums"]["message_status"]
+        }
+        Update: {
+          attachment_type?: string | null
+          attachment_url?: string | null
+          content?: string | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+          status?: Database["public"]["Enums"]["message_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parent_links: {
+        Row: {
+          created_at: string
+          id: string
+          parent_id: string
+          student_code: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          parent_id: string
+          student_code: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          parent_id?: string
+          student_code?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
+      point_events: {
+        Row: {
+          assistant_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["point_kind"]
+          note: string | null
+          points: number
+          ref_id: string | null
+        }
+        Insert: {
+          assistant_id: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["point_kind"]
+          note?: string | null
+          points: number
+          ref_id?: string | null
+        }
+        Update: {
+          assistant_id?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["point_kind"]
+          note?: string | null
+          points?: number
+          ref_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -85,7 +204,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      assistant_scores: {
+        Row: {
+          answers: number | null
+          assignments_graded: number | null
+          assistant_id: string | null
+          avatar_url: string | null
+          name: string | null
+          quizzes_graded: number | null
+          total_points: number | null
+          weekly_points: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
@@ -95,9 +226,25 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_assistant: { Args: { _uid: string }; Returns: boolean }
+      is_conversation_member: {
+        Args: { _conv: string; _uid: string }
+        Returns: boolean
+      }
+      is_parent_of: {
+        Args: { _parent: string; _student: string }
+        Returns: boolean
+      }
+      is_teacher: { Args: { _uid: string }; Returns: boolean }
     }
     Enums: {
       app_role: "student" | "assistant" | "teacher" | "parent"
+      message_status: "sent" | "delivered" | "read"
+      point_kind:
+        | "question_answered"
+        | "assignment_graded"
+        | "quiz_graded"
+        | "quality_bonus"
       user_gender: "male" | "female"
     }
     CompositeTypes: {
@@ -227,6 +374,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["student", "assistant", "teacher", "parent"],
+      message_status: ["sent", "delivered", "read"],
+      point_kind: [
+        "question_answered",
+        "assignment_graded",
+        "quiz_graded",
+        "quality_bonus",
+      ],
       user_gender: ["male", "female"],
     },
   },
