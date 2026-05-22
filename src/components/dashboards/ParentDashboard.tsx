@@ -129,9 +129,16 @@ const ParentDashboard = () => {
                 {attendancePercentage}% attendance rate
               </div>
             </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="mt-2 w-full text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
+              onClick={() => navigate('/attendance')}
+            >
+              View attendance details
+            </Button>
           </CardContent>
         </Card>
-
         
         {/* Assignments card */}
         <Card>
@@ -152,34 +159,47 @@ const ParentDashboard = () => {
                 <div>{assignmentStats.graded} graded</div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Contact assistant card */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center">
-              <User size={18} className="mr-2 text-edu-purple-600" />
-              Need Help?
-            </CardTitle>
-            <CardDescription>
-              Reach out to your child's assistant
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-gray-600 mb-3">
-              Ask questions about progress, attendance or assignments.
-            </p>
-            <Button
-              size="sm"
-              className="w-full"
-              onClick={() => navigate('/contact-assistant')}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="mt-2 w-full text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
+              onClick={() => navigate('/assignments')}
             >
-              Contact Assistant
+              View assignments
             </Button>
           </CardContent>
         </Card>
-
+        
+        {/* Materials card */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center">
+              <BookOpen size={18} className="mr-2 text-edu-purple-600" />
+              Learning Materials
+            </CardTitle>
+            <CardDescription>
+              Access study resources
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div className="text-sm">Recently added:</div>
+              <ul className="text-xs text-gray-600 space-y-1">
+                <li>• Math Textbook PDF</li>
+                <li>• Physics Lecture Recording</li>
+                <li>• Chemistry Lab Demo</li>
+              </ul>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="mt-2 w-full text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
+              onClick={() => navigate('/materials')}
+            >
+              View all materials
+            </Button>
+          </CardContent>
+        </Card>
       </div>
       
       {/* Assignments section */}
@@ -212,12 +232,29 @@ const ParentDashboard = () => {
                     )}
                   </div>
                 </div>
+                <div className="bg-gray-50 md:w-32 p-4 flex justify-center items-center border-t md:border-t-0 md:border-l border-gray-200">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="w-full"
+                    onClick={() => navigate(`/assignments/${assignment.id}`)}
+                  >
+                    View Details
+                  </Button>
+                </div>
               </div>
             </Card>
           ))}
         </div>
+        <div className="mt-4 text-center">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/assignments')}
+          >
+            View All Assignments
+          </Button>
+        </div>
       </section>
-
       
       {/* Attendance history */}
       <section>
@@ -248,6 +285,15 @@ const ParentDashboard = () => {
                   </span>
                 </div>
               ))}
+            </div>
+            <div className="mt-4 text-center">
+              <Button 
+                variant="ghost" 
+                className="text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
+                onClick={() => navigate('/attendance')}
+              >
+                View full attendance history
+              </Button>
             </div>
           </CardContent>
         </Card>
