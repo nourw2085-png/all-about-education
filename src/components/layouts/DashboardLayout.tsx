@@ -95,7 +95,7 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
     switch (role) {
       case 'student':
         roleSpecificItems = [
-          { icon: <MessageSquare size={20} />, label: 'Questions', path: '/questions' },
+          { icon: <MessageSquare size={20} />, label: 'Chat', path: '/chat' },
           { icon: <FileText size={20} />, label: 'Assignments', path: '/assignments' },
           { icon: <Trophy size={20} />, label: 'Daily Quiz', path: '/daily-quiz' },
           { icon: <BookOpen size={20} />, label: 'Materials', path: '/materials' },
@@ -104,8 +104,9 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
         break;
       case 'assistant':
         roleSpecificItems = [
-          { icon: <MessageSquare size={20} />, label: 'Questions', path: '/questions' },
+          { icon: <MessageSquare size={20} />, label: 'Chat', path: '/chat' },
           { icon: <FileText size={20} />, label: 'Assignments', path: '/assignments' },
+          { icon: <User size={20} />, label: 'Students', path: '/students' },
           { icon: <BookOpen size={20} />, label: 'Materials', path: '/materials' },
           { icon: <CalendarCheck size={20} />, label: 'Attendance', path: '/attendance' },
         ];
@@ -115,6 +116,7 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
           { icon: <User size={20} />, label: 'Students', path: '/students' },
           { icon: <User size={20} />, label: 'Assistants', path: '/assistants' },
           { icon: <FileText size={20} />, label: 'Assignments', path: '/assignments' },
+          { icon: <MessageSquare size={20} />, label: 'Monitor Chats', path: '/chat' },
           { icon: <BookOpen size={20} />, label: 'Materials', path: '/materials' },
           { icon: <CalendarCheck size={20} />, label: 'Attendance', path: '/attendance' },
         ];
@@ -122,8 +124,6 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
       case 'parent':
         roleSpecificItems = [
           { icon: <User size={20} />, label: 'My Child', path: '/my-child' },
-          { icon: <FileText size={20} />, label: 'Assignments', path: '/assignments' },
-          { icon: <BookOpen size={20} />, label: 'Materials', path: '/materials' },
           { icon: <CalendarCheck size={20} />, label: 'Attendance', path: '/attendance' },
         ];
         break;
