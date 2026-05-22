@@ -129,16 +129,9 @@ const ParentDashboard = () => {
                 {attendancePercentage}% attendance rate
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="mt-2 w-full text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
-              onClick={() => navigate('/attendance')}
-            >
-              View attendance details
-            </Button>
           </CardContent>
         </Card>
+
         
         {/* Assignments card */}
         <Card>
@@ -159,47 +152,34 @@ const ParentDashboard = () => {
                 <div>{assignmentStats.graded} graded</div>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="mt-2 w-full text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
-              onClick={() => navigate('/assignments')}
-            >
-              View assignments
-            </Button>
           </CardContent>
         </Card>
-        
-        {/* Materials card */}
+
+        {/* Contact assistant card */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center">
-              <BookOpen size={18} className="mr-2 text-edu-purple-600" />
-              Learning Materials
+              <User size={18} className="mr-2 text-edu-purple-600" />
+              Need Help?
             </CardTitle>
             <CardDescription>
-              Access study resources
+              Reach out to your child's assistant
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-1">
-              <div className="text-sm">Recently added:</div>
-              <ul className="text-xs text-gray-600 space-y-1">
-                <li>• Math Textbook PDF</li>
-                <li>• Physics Lecture Recording</li>
-                <li>• Chemistry Lab Demo</li>
-              </ul>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="mt-2 w-full text-edu-purple-600 hover:text-edu-purple-700 hover:bg-edu-purple-50"
-              onClick={() => navigate('/materials')}
+            <p className="text-xs text-gray-600 mb-3">
+              Ask questions about progress, attendance or assignments.
+            </p>
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={() => navigate('/contact-assistant')}
             >
-              View all materials
+              Contact Assistant
             </Button>
           </CardContent>
         </Card>
+
       </div>
       
       {/* Assignments section */}
