@@ -19,8 +19,19 @@ const Dashboard = () => {
 
     if (!isAuthenticated) {
       navigate('/');
+      return;
     }
-  }, [authReady, isAuthenticated, loading, navigate]);
+
+    // Redirect to onboarding if profile is incomplete
+    if (user) {
+      const needsRole = !role;
+      const needsPapers = (role === 'student' || role === 'assistant') && (!user.papers || user.papers.length === 0);
+      const needsBank = role === 'assistant' && !user.bankNumber;
+      if (needsRole || needsPapers || needsBank) {
+        navigate('/onboarding', { replace: true });
+      }
+    }
+  }, [authReady, isAuthenticated, loading, navigate, user, role]);
   
   if (loading || !authReady) {
     return null;
