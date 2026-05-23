@@ -18,7 +18,7 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | ''>('');
   const [bankNumber, setBankNumber] = useState('');
-  const [studentCode, setStudentCode] = useState('');
+  
   const [studentCodes, setStudentCodes] = useState<string[]>([]);
   const [currentStudentCode, setCurrentStudentCode] = useState('');
   const [selectedPapers, setSelectedPapers] = useState<Paper[]>([]);
@@ -143,7 +143,7 @@ const Register = () => {
         return;
       }
       
-      const result = await register(name, email, password, role, gender, bankNumber, studentCode, studentCodes, selectedPapers);
+      const result = await register(name, email, password, role, gender, bankNumber, undefined, studentCodes, selectedPapers);
 
       // Parent: resolve student_codes → user_ids and create parent_links
       if (role === 'parent' && studentCodes.length > 0) {
@@ -328,18 +328,6 @@ const Register = () => {
               </div>
             )}
             
-            {role === 'student' && (
-              <div className="space-y-2">
-                <Label htmlFor="studentCode">Student Code (Optional)</Label>
-                <Input 
-                  id="studentCode" 
-                  placeholder="Enter your student code if you have one" 
-                  value={studentCode}
-                  onChange={(e) => setStudentCode(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">If left empty, a code will be generated for you</p>
-              </div>
-            )}
             
             {role === 'parent' && (
               <div className="space-y-2">
