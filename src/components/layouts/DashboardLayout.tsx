@@ -162,7 +162,7 @@ const DashboardLayout = ({ children, title, activeNav }: DashboardLayoutProps) =
             <SheetContent side="left" className="w-[240px] sm:w-[300px]">
               <div className="flex flex-col h-full">
                 <div className="px-2 py-4 flex justify-between items-center">
-                  <h2 className="text-lg font-bold text-edu-purple-700 dark:text-edu-purple-300">Tutor Quest Connect</h2>
+                  <h2 className="text-lg font-bold text-edu-purple-700 dark:text-edu-purple-300">Classly</h2>
                   <ThemeToggle />
                 </div>
                 <Separator />
