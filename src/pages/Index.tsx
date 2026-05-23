@@ -50,7 +50,7 @@ const Index = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-secondary p-4">
       <div className="w-full max-w-6xl">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-primary">Welcome</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 text-primary">Welcome to Classly</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             A platform connecting students, assistants, teachers, and parents for enhanced learning experiences
           </p>
